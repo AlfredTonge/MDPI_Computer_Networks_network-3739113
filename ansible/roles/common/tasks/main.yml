@@ -1,0 +1,70 @@
+- name: APT Cache update
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: APT Upgrade
+  become: yes
+  apt: 
+    upgrade: yes
+    autoremove: yes
+    autoclean: yes
+
+- name: Install Python3-pip
+  become: yes
+  apt:
+    name: python3-pip
+    state: latest
+
+- name: Install unattended upgrades
+  become: yes
+  apt:
+    name: unattended-upgrades
+    state: latest
+
+- name: dpkg plow reconfigure unattended upgrades
+  become: yes
+  shell: dpkg-reconfigure -f noninteractive unattended-upgrades
+
+- name: Install open-iscsi for Longhorn
+  become: yes
+  apt:
+    name: open-iscsi
+    state: latest
+
+- name: Ensure /etc/apt/apt.conf.d/20auto-upgrades exists
+  become: yes
+  file:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    state: touch
+    mode: 0644
+
+- name: Enable unattended security upgrades
+  become: yes
+  lineinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    regexp: '^\/\/\s*"\\${distro_id}:\\${distro_codename}-security";'
+    line: '"\\${distro_id}:\\${distro_codename}-security";'
+
+- name: Enable unattended upgrades package lists
+  become: yes
+  lineinfile:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: '^\/\/\s*APT::Periodic::Update-Package-Lists\s*"1"\s*;'
+    line: 'APT::Periodic::Update-Package-Lists "1";'
+    state: present
+
+- name: Enable Unattended Upgrade "1"
+  become: yes
+  lineinfile:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: '^\/\/\s*APT::Periodic::Unattended-Upgrade\s*"1"\s*;'
+    line: 'APT::Periodic::Unattended-Upgrade "1";'
+    state: present
+
+- name: Set node offset for upgrade
+  become: yes
+  lineinfile:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: '^\/\/\s*"APT::Periodic::RandomSleep";'
+    line: '"APT::Periodic::RandomSleep" "{{ ansible_hostname | hash(''md5'') | int(base=16) % 1800 }}";'

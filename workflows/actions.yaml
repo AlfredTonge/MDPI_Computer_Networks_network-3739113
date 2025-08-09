@@ -1,0 +1,90 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'kubernetes/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: terraform
+
+env:
+  TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+  TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+  TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+  TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  TF_VAR_cloudflare_api_zoneid: ${{ secrets.CLOUDFLARE_API_ZONEID }}
+
+jobs:
+  tf_fmt:
+    name: Deploy VPS
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout Repo
+      uses: actions/checkout@v1
+
+    - name: Setup SSH Keys
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        echo "${{ secrets.SSH_PUBLIC_KEY }}" | base64 --decode > ~/.ssh/id_ed25519.pub
+        chmod 600 ~/.ssh/id_ed25519.pub
+
+    - name: Setup SSH Keys
+      run: |
+        ip a
+        hostname
+
+    - name: Add SSH Key to Agent
+      env: 
+        SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+      run: |
+        ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+        ssh-add <(echo ${{ secrets.SSH_PRIVATE_KEY }} | base64 -d)
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with: 
+        cli_config_credentials_token: ${{ secrets.TERRAFORM_CLOUD_TOKEN }}
+        terraform_wrapper: false
+
+    # - name: Ansible-lint
+    #   uses: ansible/ansible-lint-action@main
+    #   with:
+    #     path: ansible
+
+    - name: Terraform Initialize
+      id: init
+      run: terraform init
+
+    - name: Terraform validate
+      id: validate
+      run: terraform validate
+
+    - name: Terraform destroy
+      id: destroy
+      run: terraform destroy -auto-approve
+
+    
+    # - name: Terraform Plan
+    #   id: plan
+    #   run: terraform plan
+      
+    # - name: Terraform Apply
+    #   id: apply
+    #   run: terraform apply -auto-approve
+    
+    # - name: Print Ansible Inventory
+    #   run: cat ../ansible/hosts
+
+    # - name: Run Ansible Playbook
+    #   run: |
+    #     ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ansible -i ../ansible/hosts --private-key ~/.ssh/id_ed25519 ../ansible/main.yml -e K3S_TOKEN=${{ secrets.K3S_TOKEN }} -e GITHUB_TOKEN=${{ secrets.FLUX_PAT }} -e GITHUB_USER=${{ GITHUB.ACTOR }}
+    
+

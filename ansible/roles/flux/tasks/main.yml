@@ -1,0 +1,95 @@
+- name: Pip3 install prerequisites
+  become: yes
+  apt:
+    name:
+      - python3-pip
+      - python3-venv
+    state: present
+    update_cache: yes
+
+- name: Create Python virtual environment for Flux prerequisites
+  become: yes
+  command: python3 -m venv /opt/flux-venv creates=/opt/flux-venv
+
+- name: Install Python prerequisites in virtualenv
+  become: yes
+  pip:
+    name:
+      - openshift
+      - pyyaml
+      - kubernetes
+    virtualenv: /opt/flux-venv
+    virtualenv_python: python3
+
+- name: Copy k3s.yaml kubeconfig to .kube/config
+  become: yes
+  copy:
+    remote_src: true
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ~/.kube/config
+    mode: '0644'  
+
+- name: Curl & Install Flux
+  become: yes
+  shell: |
+    curl -s https://fluxcd.io/install.sh | sudo bash
+
+# - name: Export GITHUB_TOKEN and GITHUB_USER
+#   become: yes
+#   shell: |
+#     export GITHUB_TOKEN={{ GITHUB_TOKEN }}
+#     export GITHUB_USER={{ GITHUB_USER }}
+
+- name: Flux pre-check
+  become: yes
+  shell: |
+    flux check --pre
+  environment:
+    GITHUB_TOKEN: "{{ GITHUB_TOKEN }}"
+    GITHUB_USER: "{{ GITHUB_USER }}"
+  register: flux_pre_check
+
+- debug:
+    var: flux_pre_check
+
+- name: Flux bootstrap
+  become: yes
+  shell: |
+    flux bootstrap github \
+      --token-auth \
+      --owner={{ GITHUB_USER }} \
+      --repository=dissertation \
+      --branch=master \
+      --path=./kubernetes \
+      --personal
+  environment:
+    GITHUB_TOKEN: "{{ GITHUB_TOKEN }}"
+    GITHUB_USER: "{{ GITHUB_USER }}"
+  register: flux_bootstrap
+
+- debug:
+    var: flux_bootstrap
+
+# - name: Create argocd namespace
+#   become: yes
+#   k8s:
+#     state: present
+#     definition:
+#       apiVersion: v1
+#       kind: Namespace
+#       metadata:
+#         name: argocd
+
+# - name: ArgoCD Manifest to deploy
+#   become: yes
+#   get_url:
+#     url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#     dest: ~/install.yaml
+#     mode: '0664'
+
+# - name: Apply Argo Manifest
+#   become: yes
+#   k8s:
+#     state: present
+#     src: ~/install.yaml
+#     namespace: argocd

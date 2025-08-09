@@ -1,0 +1,131 @@
+- name: Disable root login
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+    state: present
+
+- name: Disable password authentication
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+
+- name: Enable key-based authentication
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    state: present
+
+- name: Disable insecure SSH modulus
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^KexAlgorithms'
+    line: 'KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256'
+    state: present
+
+- name: Disable X11 forwarding
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^X11Forwarding'
+    line: 'X11Forwarding no'
+    state: present
+
+- name: Disable agent forwarding
+  become: yes
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^AllowAgentForwarding'
+    line: 'AllowAgentForwarding no'
+    state: present
+
+# - name Install UFW
+#   become: yes
+#   apt:
+#     name: ufw
+#     state: present
+
+# - name: Allow SSH through UFW
+#   become: yes
+#   ufw:
+#     rule: allow
+#     port: 22
+
+# - name: Allow HTTP through UFW from enp7s0 interface
+#   become: yes
+#   ufw:
+#     rule: allow
+#     port: 80
+#     interface: enp7s0
+
+# - name: Allow HTTPS through UFW from enp7s0 interface
+#   become: yes
+#   ufw:
+#     rule: allow
+#     port: 443
+#     interface: enp7s0
+
+# - name: Enable UFW
+#   become: yes
+#   ufw:
+#     state: enabled
+
+# - name: APT Install fail2ban
+#   become: yes
+#   apt:
+#     name: fail2ban
+#     state: present
+
+# - name: Copy etc fail2ban conf to local
+#   become: yes
+#   copy:
+#     remote_src: true
+#     src: /etc/fail2ban/jail.local
+#     dest: /etc/fail2ban/jail.local
+#     owner: root
+#     group: root
+#     mode: 0644
+
+# - name: Set default ban time to 1 hour
+#   become: yes
+#   lineinfile:
+#     path: /etc/fail2ban/jail.local
+#     regexp: '^bantime'
+#     line: 'bantime = 3600'
+#     state: present
+
+# - name: Set default retry to 3
+#   become: yes
+#   lineinfile:
+#     path: /etc/fail2ban/jail.local
+#     regexp: '^maxretry'
+#     line: 'maxretry = 3'
+#     state: present
+
+# - name: Enable SSHD section in fail2ban
+#   become: yes
+#   lineinfile:
+#     path: /etc/fail2ban/jail.local
+#     regexp: '^#\[sshd\]'
+#     line: '[sshd]\nenabled = true'
+#     state: present
+
+# - name: Enable fail2ban service
+#   become: yes
+#   service:
+#     name: fail2ban
+#     state: started
+#     enabled: yes
+
+- name: Restart SSH service
+  become: yes
+  service:
+    name: sshd
+    state: restarted

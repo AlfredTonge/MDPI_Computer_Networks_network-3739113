@@ -1,0 +1,46 @@
+- name: First Node Cluster Initialisation
+  become: yes
+  shell: |
+    curl -sfL https://get.k3s.io | K3S_TOKEN={{ K3S_TOKEN }} sh -s - server --cluster-init --flannel-iface=enp7s0 --node-name="$(hostname -f)"
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Additional Node Cluster Join
+  become: yes
+  shell: |
+    curl -sfL https://get.k3s.io | K3S_TOKEN={{ K3S_TOKEN }} sh -s - server --server https://10.0.1.3:6443 --flannel-iface=enp7s0 --node-name="$(hostname -f)"
+  async: 120
+  poll: 5
+  when: inventory_hostname != ansible_play_hosts[0]
+
+- name: Test Cluster
+  become: yes
+  shell: |
+    kubectl get nodes
+  register: kubectl_output
+  until: kubectl_output.stdout.find('Ready') != -1
+  retries: 10
+  delay: 5
+  run_once: true
+
+- name: Print kubectl get nodes output
+  debug:
+    msg: "{{ kubectl_output.stdout }}"
+  run_once: true
+
+# - name: Install open-iscsi for Longhorn
+#   become: yes
+#   apt:
+#     name: open-iscsi
+#     state: present
+
+- name: Install Longhorn
+  become: yes
+  shell: |
+    kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.5.1/deploy/longhorn.yaml
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Install cert-manager CRDs pre-requisite
+  become: yes
+  shell: |
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.crds.yaml
+  

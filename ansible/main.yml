@@ -1,0 +1,45 @@
+---
+- name: Deploy configuration to all hosts
+  hosts: all
+  #strategy: free
+  roles:
+    - role: common
+    - role: hardening
+
+- name: Install & Configure K3S on all hosts
+  hosts: k8s-node
+  roles:
+    - role: kube
+      K3S_TOKEN: "{{ K3S_TOKEN }}"
+
+- name: Install & Configure Flux
+  hosts: k8s-node
+  tasks:
+    - name: Install & Configure Flux
+      include_role:
+        name: flux
+      vars:
+        GITHUB_TOKEN: "{{ GITHUB_TOKEN }}"
+        GITHUB_USERNAME: "{{ GITHUB_USER }}"
+      when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Configure rsyslog forwarder on test-server
+  hosts: test-server
+  roles:
+    - role: rsyslogforwarder
+
+- name: Wait for Grafana to be ready
+  hosts: test-server
+  tasks:
+    - name: Check Grafana URL
+      uri:
+        url: https://grafana.fyp.domain.com/login
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: response
+      until: response.status == 200
+      retries: 100
+      delay: 10
+      failed_when: 
+        - response.status != 200

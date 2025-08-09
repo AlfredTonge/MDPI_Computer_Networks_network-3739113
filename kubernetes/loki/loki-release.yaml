@@ -1,0 +1,40 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  chart:
+    spec:
+      chart: loki
+      version: 5.39.0
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  timeout: 10m0s
+  interval: 1h0m0s
+  values:
+    loki:
+      auth_enabled: false
+    minio: 
+      enabled: true
+      replicas: 3
+      persistence:
+        enabled: true
+        size: 4Gi
+        # storageClass: "driver.longhorn.io"
+
+      
+    # gateway:
+    #   ingress:
+    #     enabled: true
+    #     ingressClassName: "traefik"
+    #     annotations:
+    #       traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    #       traefik.ingress.kubernetes.io/redirect-entry-point: https
+    #     hosts:
+    #       - host: &host "loki.fyp.domain.com"
+    #         paths:
+    #           - path: /
+    #             pathType: Prefix

@@ -1,0 +1,25 @@
+- name: Ensure rsyslog is installed
+  become: yes
+  apt:
+    name: rsyslog
+    state: present
+- name: Ensure rsyslog is running
+  become: yes
+  service:
+    name: rsyslog
+    state: started
+    enabled: yes
+- name: Ensure rsyslog configurations
+  become: yes
+  blockinfile:
+    path: /etc/rsyslog.conf
+    block: |
+      *.* action(type="omfwd" protocol="tcp" target="10.0.1.3" port="30000" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
+      *.* action(type="omfwd" protocol="tcp" target="10.0.1.4" port="30000" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
+      *.* action(type="omfwd" protocol="tcp" target="10.0.1.5" port="30000" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
+- name: Ensure rsyslog is restarted
+  become: yes
+  service:
+    name: rsyslog
+    state: restarted
+    enabled: yes
